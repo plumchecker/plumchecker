@@ -1,6 +1,8 @@
 [submodule "plum-storage"]
 	path = backend/storage
 	url = https://github.com/plumchecker/storage.git
+	branch = origin/main
 [submodule "plum-worker"]
 	path = backend/worker
 	url = https://github.com/plumchecker/worker.git
+	branch = origin/main
