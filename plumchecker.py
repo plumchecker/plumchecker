@@ -1,17 +1,22 @@
 #!/usr/bin/python3
-import argparse
-import filetype
+import logging
 
+from filetype import (is_archive, get_type, guess as guess_type)
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Iterable
 
+def send_file(filename):
+    # TODO: how do I send files to the normalization module?
+    pass
+
 def add_file(filename, recursive_archives):
-    is_archive = filetype.is_archive(filename)
-    if is_archive:
-        extension = filetype.guess(filename)
-        known_extensions = [filetype.get_type(ext = "gz"), 
-                            filetype.get_type(ext = "tar"), 
-                            filetype.get_type(ext = "zip")]
+    is_an_archive = is_archive(filename)
+    if is_an_archive:
+        extension = guess_type(filename)
+        known_extensions = [get_type(ext = "gz"), 
+                            get_type(ext = "tar"), 
+                            get_type(ext = "zip")]
         if not extension in known_extensions:
             raise NotImplementedError(f"We don't know how to process archive type {extension.extension} for file {filename}")
         # TODO: Add in-archive file iteration
@@ -20,6 +25,8 @@ def add_file(filename, recursive_archives):
         pass
 
 def add_data(args):
+    # init logger
+    logger = logging.getLogger("Add")
     # check if it's a real folder/file
     path = Path(args.path)
     if path.is_dir():
@@ -30,16 +37,16 @@ def add_data(args):
             folder_files = set(path.glob("*")) - set(path.glob("**"))
         for file in folder_files:
             try:
-                print(f"Adding {str(file)}...")
+                logger.info(f"Adding {str(file)}...")
                 add_file(file, args.recursive_archives)
             except NotImplementedError as e:
-                print(f"\tUnable to add file {str(file)} because\n\t\t{str(e)}")
+                logger.error(f"\tUnable to add file {str(file)} because\n\t\t{str(e)}")
         pass
     elif path.is_file():
-        print(f"Adding {str(file)}...")
+        logger.info(f"Adding {str(file)}...")
         add_file(args.path, args.recursive_archives)
     else:
-        print(f"Nothing found at path {str(path)}. Please check your input.")
+        logger.warning(f"Nothing found at path {str(path)}. Please check your input.")
         
 
 def query_data(args):
@@ -47,8 +54,23 @@ def query_data(args):
     pass
 
 def main():
-    parser = argparse.ArgumentParser(prog = 'Plumchecker',
-                                     description = 'Parse and query leaked password DB\'s')
+    # setup logging first
+    logging_handler = logging.StreamHandler()
+    logging_formatter = logging.Formatter("[%(levelname)s][%(name)s][%(asctime)s] %(message)s")
+    logging_handler.setFormatter(logging_formatter)
+    logging.Logger.root.addHandler(logging_handler)
+    
+    parser = ArgumentParser(prog = 'Plumchecker',
+                            description = 'Parse and query leaked password DB\'s')
+    parser.add_argument('--verbosity', '-v', 
+                        type = int,
+                        default = 2,
+                        help = '''how verbose should output be. Levels: \
+                                4 - Error, \
+                                3 - Warning, \
+                                2 - Info, \
+                                1 - Debug.''',
+                        metavar = "LEVEL")
     subparser = parser.add_subparsers(title = 'Subcommands', 
                                       description = 'Available commands: add, query', 
                                       required = True)
@@ -74,10 +96,11 @@ def main():
     parser_query.set_defaults(func = query_data)
     
     args = parser.parse_args()
+    logging.Logger.root.setLevel(args.verbosity * 10)
     try:
         args.func(args)
     except NotImplementedError as e:
-        print(f"Something went wrong: \n{str(e)}\nWe're sorry!")
+        logging.getLogger("D'oh").critical(f"Something went wrong: \n{str(e)}\nWe're sorry!")
 
 if __name__ == "__main__":
     main()
