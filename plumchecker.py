@@ -1,16 +1,20 @@
 #!/usr/bin/python3
 import logging
 
-from filetype import (is_archive, get_type, guess as guess_type)
+from filetype import (is_archive, get_type, guess as guess_type, guess_extension)
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Iterable
+from archives import ArchiveFactory, Archive
 
 def send_file(filename):
     # TODO: how do I send files to the normalization module?
     pass
 
-def add_file(filename, recursive_archives):
+def add_file(filename, recursive_archives: bool):
+    # init logger
+    logger = logging.getLogger("Add.file")
+    
     is_an_archive = is_archive(filename)
     if is_an_archive:
         extension = guess_type(filename)
@@ -20,6 +24,25 @@ def add_file(filename, recursive_archives):
         if not extension in known_extensions:
             raise NotImplementedError(f"We don't know how to process archive type {extension.extension} for file {filename}")
         # TODO: Add in-archive file iteration
+        archive: Archive = ArchiveFactory().openArchive(filename)
+        # replace filename if bytes were passed
+        if type(filename) is bytes:
+            filename = "archive.tar"
+        paths = [Path('')]
+        while len(paths) > 0:
+            directory = paths.pop()
+            for item in archive.iter_dir(directory):
+                if archive.is_dir(item) and recursive_archives:
+                    paths.append(directory / item)
+                elif not archive.is_dir(item):
+                    # check if there is a tar
+                    file = archive.read(item)
+                    if guess_extension(file) == "tar":
+                        logger.info(f".tar file detected inside {filename}! Parsing it as well...")
+                        add_file(file, recursive_archives)
+                    else:
+                        logger.info(f"Adding file {archive.name(item)} from archive {filename}")
+                        send_file(item)
     else:
         # TODO: Add file processing
         pass
