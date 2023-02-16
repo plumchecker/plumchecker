@@ -15,10 +15,10 @@ class TarArchive(Archive):
             yield file
     
     def read(self, path):
-        return self.archive.extractfile(path)
+        return self.archive.extractfile(path).read()
     
     def is_dir(self, path) -> bool:
-        return super().is_dir(path)
+        return path.isdir()
     
     def name(self, file):
         return file.name
