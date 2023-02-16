@@ -1,0 +1,13 @@
+{
+    "storage": {
+        "host": "localhost",
+        "port": 30001,
+        "endpoints": {
+            "add": "api/leaks",
+            "query": "api/search"
+        }
+    },
+    "worker": {
+        "batch_size": 100
+    }
+}
